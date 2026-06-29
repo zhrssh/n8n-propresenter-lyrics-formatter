@@ -1,0 +1,708 @@
+{
+  "name": "[SCC] PDF to ProPresenter Lyrics",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "[For SCC] PDF/TXT to ProPresenter Formatter",
+        "formDescription": "Extract lyrics and convert to ProPresenter-compatible format.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Upload File(s)",
+              "fieldType": "file",
+              "fieldName": "files",
+              "acceptFileTypes": ".pdf, .txt",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Type",
+              "fieldType": "radio",
+              "fieldName": "type",
+              "defaultValue": "1 Song Per File",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "1 Song Per File"
+                  },
+                  {
+                    "option": "1 Song Per Page (Single File Only)"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "ignoreBots": true
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -1728,
+        320
+      ],
+      "id": "6291f857-2885-42b9-8033-a37ae1644402",
+      "name": "On form submission",
+      "webhookId": "46e94b8d-b5d7-452d-b4b6-7e421f0d23e9",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "WflcwJZSAxEFPRSp",
+          "name": "SCC Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        272
+      ],
+      "id": "0c3d18e6-dfc7-4dd9-9947-e1ab9a0d9e62",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gWvrBRukcMjsiq1W",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -256,
+        160
+      ],
+      "id": "7386a4fc-7054-4454-8da7-fc94fa3c4754",
+      "name": "Wait",
+      "webhookId": "dcc783f1-1c3d-4419-904a-48cfd482b61f"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        384
+      ],
+      "id": "a64c8259-12c5-442e-87a9-346241ee7b88",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "gWvrBRukcMjsiq1W",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "output",
+        "options": {
+          "encoding": "utf8",
+          "fileName": "=file_{{ $itemIndex }}.txt"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        160
+      ],
+      "id": "93b427bd-df88-48b1-a4e1-5a0a95ad7b59",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1056,
+        464
+      ],
+      "id": "aebdb203-7fb8-43db-ac39-0472d804f703",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ Object.keys($binary).join(',') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        464
+      ],
+      "id": "8e9659b0-e259-49cf-a4b9-578221167434",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "$binary",
+        "include": "allOtherFields",
+        "options": {
+          "includeBinary": false
+        }
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        464
+      ],
+      "id": "e1e09f77-b442-45f5-88e3-9962f06bf72c",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        160
+      ],
+      "id": "bd2abb7e-87ee-47d6-964d-d8604ef90b56",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "compress",
+        "binaryPropertyName": "={{ Object.keys($binary).join(',') }}",
+        "fileName": "lyrics.zip"
+      },
+      "type": "n8n-nodes-base.compression",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        160
+      ],
+      "id": "0c5ce2ac-4b11-46ec-9160-a3559fc61ed4",
+      "name": "Compression"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "returnBinary",
+        "completionTitle": "Conversion Complete",
+        "completionMessage": "The ZIP file containing the lyrics is ready for download.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        992,
+        160
+      ],
+      "id": "fb4175c3-f3e0-445b-9340-cc0ddb1b5e68",
+      "name": "Form",
+      "webhookId": "cd2531ed-3036-417b-9f22-004c78271ff1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {
+          "includeBinaries": true
+        }
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        544,
+        160
+      ],
+      "id": "1c70d644-8de6-4a59-9862-4b7b12c0d454",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract lyrics from here:\n\n{{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a lyrics extraction and normalization agent.\n\nYour task is to extract only the song lyrics and section headings from the provided text while removing all musical notation and formatting artifacts.\n\n## Objectives\n\n- Preserve all section headings exactly as they appear.\n- Remove all chord notation.\n- Remove formatting artifacts used for musical notation.\n- Reconstruct words that were split across syllables.\n- Preserve the original lyrics without rewriting or correcting them.\n- Output only the cleaned lyrics.\n\n---\n\n## Rules\n\n1. Preserve all section headings exactly as they appear.\n\nExamples:\n\n```\n[Verse 1]\n[Verse 2]\n[Pre-Chorus]\n[Chorus]\n[Bridge]\n[Outro]\n[Tag]\n[Instrumental]\n```\n\n2. Remove all chord notation.\n\nThis includes, but is not limited to:\n\n```\nC\nDm\nEm7\nF#m\nBbmaj7\nGsus4\nD/F#\nA/C#\nCadd9\nN.C.\n```\n\nRemove chords whether they appear:\n\n- on their own line\n- before lyrics\n- after lyrics\n- between words\n- inside parentheses or brackets when they represent chords\n\n---\n\n3. Remove lines that contain only chord notation.\n\nExample:\n\nInput\n\n```\nD      G\nA      Bm\n```\n\nOutput\n\n```\n\n```\n\n---\n\n4. Remove inline chord notation.\n\nExample\n\nInput\n\n```\nD        G\nOpen our eyes Lord\n```\n\nOutput\n\n```\nOpen our eyes Lord\n```\n\nExample\n\nInput\n\n```\nOpen our D eyes G Lord\n```\n\nOutput\n\n```\nOpen our eyes Lord\n```\n\n---\n\n5. Normalize hyphens.\n\n### Join syllable-split words.\n\nExamples:\n\n```\nHea-ven → Heaven\nHo-ly → Holy\nA-ma-zing → Amazing\nFor-ev-er → Forever\no-pen → open\n```\n\n### Remove lyric continuation dashes.\n\nThese dashes exist only to indicate musical timing.\n\nExamples:\n\n```\nKing over all - the earth\n→ King over all the earth\n\nYou are - worthy\n→ You are worthy\n\nI will - sing\n→ I will sing\n```\n\n### Preserve legitimate hyphenated words.\n\nExamples:\n\n```\nGod-given\nSpirit-filled\nSelf-control\nCross-shaped\n```\n\n---\n\n6. Preserve punctuation.\n\nDo not modify commas, periods, quotation marks, apostrophes, question marks, or exclamation marks unless they are part of removed chord notation.\n\n---\n\n7. Preserve blank lines between sections.\n\n---\n\n8. Do not rewrite the lyrics.\n\nDo NOT:\n\n- paraphrase\n- correct grammar\n- complete missing lyrics\n- modernize spelling\n- infer missing words\n- reorder lines\n\nOnly remove musical notation and formatting artifacts.\n\n---\n\n9. Do not create or remove section headings.\n\nOnly preserve headings that already exist.\n\n---\n\n10. Output only the cleaned lyrics.\n\nDo not include:\n\n- explanations\n- comments\n- Markdown\n- code fences\n- notes\n- confidence statements\n\n---\n\n## Example\n\n### Input\n\n```\n[Intro]\n\nD\n\nOh, Oh, Oh, Oh, Oh x5\n\n[Verse 1]\n\nD          G\nOpen our eyes Lord,\nA\nwe want to see\n\nBm        G\nHea-ven is\nD/F#\no-pen now\n\nKing over all - the earth\n\nYou are - worthy\n\nSpirit-filled hearts\n```\n\n### Output\n\n```\n[Intro]\n\nOh, Oh, Oh, Oh, Oh x5\n\n[Verse 1]\n\nOpen our eyes Lord,\nwe want to see\n\nHeaven is\nopen now\n\nKing over all the earth\n\nYou are worthy\n\nSpirit-filled hearts\n```\n\nReturn only the cleaned lyrics with their original section headings.",
+          "batching": {
+            "batchSize": "={{ $('No Operation, do nothing').all().length}}",
+            "delayBetweenBatches": 1000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -608,
+        48
+      ],
+      "id": "5788bb3a-92c7-408b-8e2f-984b21a2900d",
+      "name": "Lyrics Extractor"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Convert this to ProPresenter format:\n\n{{ $json.output }}",
+        "options": {
+          "systemMessage": "You are an expert lyric formatter for ProPresenter.\n\nYour task is to convert song lyrics into a clean, ProPresenter-compatible format.\n\n## Rules\n\n1. Preserve the original lyrics exactly.\n\n   * Do **not** paraphrase.\n   * Do **not** correct grammar.\n   * Do **not** change capitalization unless absolutely necessary.\n   * Do **not** add or remove words.\n\n2. Detect song sections such as:\n\n   * Verse\n   * Chorus\n   * Pre-Chorus\n   * Bridge\n   * Tag\n   * Intro\n   * Outro\n   * Refrain\n\n3. Format each section using this style:\n\n```text\n[Verse 1]\n\nAmazing grace\nHow sweet the sound\n\nThat saved a wretch\nLike me\n```\n\n4. Add one blank line:\n\n   * After every section title.\n   * Between every lyric slide.\n\n5. Remove consecutive duplicate lyric blocks.\n\nIf two or more consecutive lyric blocks are **identical**, output only the first occurrence.\n\nThis applies within the same section only.\n\nExample:\n\nInput\n\n```text\n[Bridge]\n\nHoly, we cry holy\nHallelujah, God is here\n\nHoly, we cry holy\nHallelujah, God is here\n\nHoly, we cry holy\nHallelujah, God is here\n```\n\nOutput\n\n```text\n[Bridge]\n\nHoly, we cry holy\nHallelujah, God is here\n```\n\nDo **not** remove repeated lyrics when:\n\n* the wording changes,\n* additional or missing lines exist,\n* they appear in different song sections.\n\n6. Split lyrics into presentation slides.\n\n### Slide Splitting Rules\n\n* Prefer **2 lines per slide**.\n* Use **3 lines only if the lines are short**.\n* Maximum of **6 words per line**.\n* Maximum of **3 lines per slide**.\n* Never split a sentence or lyrical phrase awkwardly.\n* Keep natural lyrical phrases together.\n* Avoid leaving a single short word by itself on a slide unless intentional.\n* Keep repeated choruses formatted consistently throughout the song.\n\n7. Remove duplicate blank lines.\n\n8. Do **not** number slides.\n\n9. Do **not** insert page breaks.\n\n10. Do **not** add comments, explanations, markdown, or code fences.\n\n11. Remove empty sections.\n\n12. Output only the formatted lyrics.\n\n---\n\n## Example\n\n### Input\n\n```text\nVerse 1\n\nAmazing grace\nHow sweet the sound\nThat saved a wretch like me\nI once was lost\nBut now am found\n\nChorus\n\nHallelujah\nHallelujah\nHallelujah\n\nBridge\n\nHoly, we cry holy\nHallelujah, God is here\n\nHoly, we cry holy\nHallelujah, God is here\n```\n\n### Output\n\n```text\n[Verse 1]\n\nAmazing grace\nHow sweet the sound\n\nThat saved a wretch like me\nI once was lost\n\nBut now am found\n\n[Chorus]\n\nHallelujah\nHallelujah\n\nHallelujah\n\n[Bridge]\n\nHoly, we cry holy\nHallelujah, God is here\n```\n\nReturn only the formatted lyrics.",
+          "batching": {
+            "batchSize": "={{ $('On form submission').item.json.files.length }}",
+            "delayBetweenBatches": 1000
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -32,
+        160
+      ],
+      "id": "aa3a8729-8d1b-475d-88c4-08d7d362b820",
+      "name": "ProPresenter Formatter"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $binary[Object.keys($binary)].fileExtension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8bcc4652-ac94-4281-a905-eca558e110e1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a09a02f2-5a95-43e7-8f3d-4d8fcd4ca396",
+                    "leftValue": "={{ $binary[Object.keys($binary)].fileExtension }}",
+                    "rightValue": "txt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "txt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -832,
+        400
+      ],
+      "id": "9b7712d7-bea5-466c-8585-964118f14cf3",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "={{ Object.keys($binary).join(',') }}",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        656
+      ],
+      "id": "1bfe37a9-8302-49ce-a562-d648225340a6",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "08c55c9a-fdfe-487d-9003-6a1acd4e1a25",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "1 Song Per Page (Single File Only)",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1_song_per_page"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "1 Song Per File",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3b35397f-fb08-4e75-9d54-fab2dc4cc198"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1_song_per_file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1504,
+        320
+      ],
+      "id": "ba406173-b248-4b82-9e45-fdbcc33c44c6",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ Object.keys($binary).join(',')}}",
+        "options": {
+          "joinPages": false
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1280,
+        112
+      ],
+      "id": "0ea2d581-b454-4a6e-aefb-09f062db94be",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "text",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        112
+      ],
+      "id": "e6e7f7ac-5de0-451c-b65e-cc45d6f053c3",
+      "name": "Split Out1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lyrics Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "ProPresenter Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ProPresenter Formatter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Lyrics Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compression": {
+      "main": [
+        [
+          {
+            "node": "Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Compression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lyrics Extractor": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProPresenter Formatter": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b7c748ae-3c70-4c3c-8971-62f68654d380",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b3de0e1958bed25d72803fdf21da15648771f2f470607be03fd9fb10127cd145"
+  },
+  "nodeGroups": [],
+  "id": "IOk3fiIw17rcfvc0",
+  "tags": [
+    {
+      "updatedAt": "2026-06-20T14:00:37.483Z",
+      "createdAt": "2026-06-20T14:00:37.483Z",
+      "id": "lI3eqAO6iMoWbmVQ",
+      "name": "scc"
+    },
+    {
+      "updatedAt": "2026-06-17T17:55:07.242Z",
+      "createdAt": "2026-06-17T17:54:58.534Z",
+      "id": "4RlgrrByZcVBE9Kc",
+      "name": "live"
+    }
+  ]
+}
