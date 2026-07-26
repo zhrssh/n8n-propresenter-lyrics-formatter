@@ -1,0 +1,413 @@
+{
+  "name": "[SCC] PDF to ProPresenter Lyrics v2",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1344,
+        560
+      ],
+      "id": "713cad59-174d-412c-8810-2d3ebdb5f420",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "00000000-0000-0000-0000-000000000000",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2384,
+        528
+      ],
+      "id": "37921705-97fc-4ab1-837c-4fbe8a03d513",
+      "name": "Webhook",
+      "webhookId": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e0b26ec6-6eb9-473b-91f2-bb03cac69136",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "<YOUR SECRET HERE>",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2144,
+        528
+      ],
+      "id": "24fe4615-6450-4920-b76e-ff7f2ed49ea2",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1920,
+        640
+      ],
+      "id": "6e20b87f-bd38-4f64-9069-fc3dbb919c0d",
+      "name": "Send HTTP_401"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"array\",\n  \"items\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"title\": {\n        \"type\": \"string\"\n      },\n      \"lyrics\": {\n        \"type\": \"string\"\n      }\n    },\n    \"required\": [\n      \"title\",\n      \"lyrics\"\n    ],\n    \"additionalProperties\": false\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1520,
+        560
+      ],
+      "id": "b13b9f89-9077-458c-9de8-b268513c8534",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1552,
+        272
+      ],
+      "id": "5c661782-153c-4d99-89e1-785e628a6851",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the lyrics.\n---\n{{ $('Webhook').item.json.body.text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a lyrics extraction assistant.\n\nYour task is to extract every complete or partial song from the input text. Detect where each song begins and ends, even when multiple songs are concatenated without separators. Do not merge different songs.\n\nReturn only valid JSON as an array of objects with the following schema:\n\n[\n  {\n    \"title\": \"<song title or null if unknown>\",\n    \"lyrics\": \"<lyrics belonging only to that song>\"\n  }\n]\n\nRules:\n- Preserve the lyrics exactly as provided. Do not correct, rewrite, or complete missing lines.\n- Preserve all section headers exactly as they appear (e.g. `[Verse 1]`, `[Chorus]`, `(Bridge)`, `Intro`, `Outro`) and keep them in their original positions.\n- Do not add, rename, infer, or remove section headers. If no section headers are present, do not invent them.\n- If multiple excerpts belong to the same song, combine them into a single output object by appending the lyrics in their original order.\n- Treat titles that differ only by continuation labels (e.g. `(Part 1)`, `(Part 2)`, `Part I`, `Part II`, `Pt. 1`, `Pt. 2`, `Page 1`, `Page 2`, `Continued`) as the same song. Use the base title (without the continuation label) as the output title.\n- Do not merge songs that have different base titles, even if they share lyrics or similar names.\n- Exclude any non-lyric text unless it is clearly part of the lyrics.\n- If the title cannot be determined from the input, use null.\n- Keep the original line breaks and spacing in the lyrics.\n- Output only the JSON array. No markdown or additional text."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1872,
+        272
+      ],
+      "id": "0ba385a7-3a9b-4373-97da-10013a73d4b9",
+      "name": "Extract Lyrics"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=title: {{ $json.title }}\nlyrics:\n{{ $json.lyrics }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a lyrics cleaning assistant.\n\nYour task is to clean extracted song lyrics while preserving their structure. Remove musical notation and OCR artifacts while keeping the lyrics and existing section headers intact.\n\nReturn only valid JSON as an array of objects with the following schema:\n\n[\n  {\n    \"title\": \"<song title or null if unknown>\",\n    \"lyrics\": \"<cleaned lyrics>\"\n  }\n]\n\nRules:\n- Preserve all existing section headers exactly as they appear (e.g. `[Verse 1]`, `[Chorus]`, `[Bridge]`).\n- Remove guitar chords, slash chords, chord symbols, rhythm notation (`/`, `|`, `x`), tablature, and chord-only lines.\n- Remove page numbers, song credits, repeat instructions (e.g. `[Repeat Chorus]`, `(Repeat)`), instrumental markers with no lyrics, and other non-lyric annotations.\n- Merge words split by OCR or formatting artifacts (e.g. `Je - sus` → `Jesus`, `glo - rious` → `glorious`, `un - changing` → `unchanging`).\n- Collapse unnecessary blank lines created during cleaning.\n- Preserve the original lyric wording, section order, and line breaks whenever possible.\n- Do not rewrite, paraphrase, infer, or complete missing lyrics.\n- If the title is unknown, use null.\n- Output only the JSON array. No markdown or additional text."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1344,
+        272
+      ],
+      "id": "58e2b131-9db3-4f71-b034-80ff3c58f251",
+      "name": "Artifacts Cleaner"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=title: {{ $json.output[0].title }}\nlyrics:\n{{ $json.output[0].lyrics }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are an expert lyric formatter for ProPresenter.\n\nConvert song lyrics into a clean, ProPresenter-compatible format.\n\nReturn only valid JSON as an array of objects with the following schema:\n\n[\n  {\n    \"title\": \"<song title or null if unknown>\",\n    \"lyrics\": \"<formatted lyrics>\"\n  }\n]\n\nExample:\n\nInput:\n\nVerse 1\n\nAmazing grace\nHow sweet the sound\nThat saved a wretch like me\nI once was lost\nBut now am found\n\nChorus\n\nHallelujah\nHallelujah\nHallelujah\n\nOutput:\n\n[\n  {\n    \"title\": null,\n    \"lyrics\": \"[Verse 1]\\nAmazing grace\\nHow sweet the sound\\n\\nThat saved a wretch like me\\nI once was lost\\n\\nBut now am found\\n\\n[Chorus]\\nHallelujah\\nHallelujah\\n\\nHallelujah\"\n  }\n]\n\nRules:\n\n1. Preserve the original lyrics exactly.\n   - Do not paraphrase, correct, add, remove, or reorder words.\n   - Preserve capitalization unless absolutely necessary.\n\n2. Preserve song sections (e.g. Verse, Chorus, Pre-Chorus, Bridge, Tag, Intro, Outro, Refrain).\n   - Format section headers as `[Verse 1]`, `[Chorus]`, etc.\n   - Every section header must be immediately followed by at least one lyric line.\n   - If a section contains no lyrics after formatting, remove the section header entirely.\n\n3. Formatting:\n   - Add one blank line between every lyric slide.\n   - Remove duplicate blank lines.\n   - Do not output empty slides.\n   - Do not output empty sections.\n\n4. Remove consecutive duplicate lyric blocks within the same section only. Keep the first occurrence.\n\n5. Split lyrics into presentation slides:\n   - Prefer 6 words per line.\n   - Maximum 2 lines per slide.\n   - Never split a sentence or lyrical phrase awkwardly.\n   - Keep natural lyrical phrases together.\n   - Format repeated sections consistently.\n\n6. Output validation:\n   - Every section header must contain at least one lyric line.\n   - No section header may appear by itself.\n   - Output only the JSON array. No markdown, comments, or additional text."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -992,
+        272
+      ],
+      "id": "f738c8e3-30e5-46db-91e8-f0a88cd7d8ee",
+      "name": "ProPresenter Formatter"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -224,
+        272
+      ],
+      "id": "72a7f799-0681-4293-bea9-40a02cc191ef",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb45f979-5e95-4de9-a0f8-2b2a73a8d1d2",
+              "name": "filename",
+              "value": "={{ $json.output[0].title }}.txt",
+              "type": "string"
+            },
+            {
+              "id": "22ab78d8-3bb2-4183-beb7-6cc41035e587",
+              "name": "content",
+              "value": "={{ $json.output[0].lyrics }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        272
+      ],
+      "id": "b680edc2-eecd-41fb-88ab-3db8d2e9fe55",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "files",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        272
+      ],
+      "id": "268fd6a1-ffae-4dfb-845a-19a6544eeae8",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Lyrics",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Artifacts Cleaner",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "ProPresenter Formatter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Extract Lyrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send HTTP_401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Extract Lyrics",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Artifacts Cleaner",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "ProPresenter Formatter",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lyrics": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Artifacts Cleaner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Artifacts Cleaner": {
+      "main": [
+        [
+          {
+            "node": "ProPresenter Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ProPresenter Formatter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "REPLACE_ON_IMPORT",
+  "tags": [
+    {
+      "updatedAt": "2026-06-20T14:00:37.483Z",
+      "createdAt": "2026-06-20T14:00:37.483Z",
+      "id": "REPLACE_ON_IMPORT",
+      "name": "scc"
+    },
+    {
+      "updatedAt": "2026-06-17T17:55:07.242Z",
+      "createdAt": "2026-06-17T17:54:58.534Z",
+      "id": "REPLACE_ON_IMPORT",
+      "name": "live"
+    }
+  ]
+}
